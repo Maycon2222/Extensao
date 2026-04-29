@@ -1,0 +1,328 @@
+// OPA - Observatorio Popular Antifraude
+// Schema em conformidade com LGPD:
+// - Telefones e CNPJs armazenados sao normalizados (so digitos) para matching
+// - CPF nao e armazenado em hipotese alguma
+// - Nomes de pessoas fisicas nao sao campos de denuncia
+// - Evidencias sao moderadas antes de publicadas
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum ReputationTier {
+  BRONZE
+  PRATA
+  OURO
+  DIAMANTE
+}
+
+enum IdentifierType {
+  PHONE
+  URL
+  CNPJ
+}
+
+enum FraudCategory {
+  PHISHING
+  SMS
+  FAKE_PROFILE
+  MARKETPLACE
+  FAKE_BOLETO
+  PIX
+  CLONE_SITE
+  CALL
+  MALICIOUS_APP
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReportStatus {
+  PUBLISHED
+  UNDER_REVIEW
+  HIDDEN
+  ARCHIVED
+  REMOVED
+}
+
+enum VoteType {
+  CONFIRM
+  FALSE_ALERT
+}
+
+enum EvidenceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ContestationStatus {
+  OPEN
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+// ============================================================================
+// USERS & AUTH
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  name          String
+  passwordHash  String?   // null se login via OAuth
+  role          UserRole  @default(USER)
+  emailVerified DateTime?
+  avatarUrl     String?
+  bio           String?
+  // Reputation tracking
+  reputationScore Int           @default(0)
+  reputationTier  ReputationTier @default(BRONZE)
+  // LGPD / data retention
+  acceptedTermsAt DateTime?
+  lastActiveAt    DateTime      @default(now())
+  anonymizedAt    DateTime?     // para retencao de 24 meses
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  reports         Report[]
+  votes           Vote[]
+  comments        Comment[]
+  contestations   Contestation[]   @relation("Contestant")
+  moderatedItems  ModerationLog[]
+  sessions        Session[]
+  accounts        Account[]
+
+  @@index([email])
+  @@index([username])
+  @@index([reputationTier])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================================================
+// REPORTS (denuncias)
+// ============================================================================
+
+model Report {
+  id              String        @id @default(cuid())
+  authorId        String
+  category        FraudCategory
+  identifierType  IdentifierType
+  // identifierNormalized: so digitos pra telefone/CNPJ; hostname lowercase pra URL
+  identifierNormalized String
+  // identifierRaw: valor original como digitado, mas NUNCA exibido publicamente
+  identifierRaw        String
+  description     String         @db.Text
+  location        String
+  occurredAt      DateTime
+  status          ReportStatus   @default(PUBLISHED)
+  // Cached stats (atualizados por triggers em votos/comentarios)
+  votesUp         Int            @default(0)
+  votesDown       Int            @default(0)
+  commentCount    Int            @default(0)
+  credibilityScore Float         @default(0) // 0..100
+  riskLevel       RiskLevel      @default(LOW)
+  verified        Boolean        @default(false) // verdadeiro quando passa do threshold
+  // Archive flag pra retencao de 12 meses sem interacao
+  archivedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  votes           Vote[]
+  comments        Comment[]
+  evidences       Evidence[]
+  contestations   Contestation[]
+
+  @@index([identifierNormalized, identifierType])
+  @@index([category])
+  @@index([riskLevel])
+  @@index([createdAt])
+  @@index([authorId])
+  @@index([status])
+}
+
+// ============================================================================
+// VOTES
+// ============================================================================
+
+model Vote {
+  id        String   @id @default(cuid())
+  reportId  String
+  userId    String
+  type      VoteType
+  // Peso do voto baseado na reputacao no momento da votacao
+  weight    Float    @default(1.0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, userId])
+  @@index([reportId])
+  @@index([userId])
+}
+
+// ============================================================================
+// COMMENTS
+// ============================================================================
+
+model Comment {
+  id        String   @id @default(cuid())
+  reportId  String
+  authorId  String
+  content   String   @db.Text
+  hidden    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([authorId])
+}
+
+// ============================================================================
+// EVIDENCES (screenshots de golpes)
+// ============================================================================
+
+model Evidence {
+  id        String         @id @default(cuid())
+  reportId  String
+  fileUrl   String
+  mimeType  String
+  sizeBytes Int
+  status    EvidenceStatus @default(PENDING)
+  createdAt DateTime       @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([status])
+}
+
+// ============================================================================
+// CONTESTATIONS (direito de defesa - Art. 18 LGPD)
+// ============================================================================
+
+model Contestation {
+  id               String             @id @default(cuid())
+  reportId         String
+  contestantId     String?            // null se contestante nao tem conta ainda
+  contestantName   String
+  contestantDoc    String             // CNPJ ou documento PJ - armazenado com cuidado
+  contestantEmail  String
+  argument         String             @db.Text
+  evidenceUrls     String[]           @default([])
+  status           ContestationStatus @default(OPEN)
+  moderatorNotes   String?            @db.Text
+  resolvedAt       DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  report      Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  contestant  User?  @relation("Contestant", fields: [contestantId], references: [id], onDelete: SetNull)
+
+  @@index([reportId])
+  @@index([status])
+}
+
+// ============================================================================
+// MODERATION LOG
+// ============================================================================
+
+model ModerationLog {
+  id           String   @id @default(cuid())
+  moderatorId  String
+  action       String   // HIDE_REPORT, REMOVE_REPORT, APPROVE_EVIDENCE, etc
+  targetType   String   // report, comment, evidence, contestation
+  targetId     String
+  reason       String?
+  createdAt    DateTime @default(now())
+
+  moderator User @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId])
+  @@index([moderatorId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// AUDIT LOG (para compliance LGPD)
+// ============================================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // LOGIN, REPORT_CREATED, VOTE_CAST, DATA_EXPORT, etc
+  metadata  Json?
+  ipHash    String?  // IP armazenado com hash para evitar PII
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
