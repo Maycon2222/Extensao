@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/animated-counter";
 import { fetchRecentReports, fetchPlatformStats } from "@/lib/data-source";
 import { FaqSection } from "@/components/faq-section";
+import { auth } from "@/lib/auth";
 
 const HOW_IT_WORKS = [
   {
@@ -72,10 +73,12 @@ const LGPD_PILLARS = [
 ];
 
 export default async function LandingPage() {
-  const [recent, stats] = await Promise.all([
+  const [recent, stats, session] = await Promise.all([
     fetchRecentReports(3),
     fetchPlatformStats(),
+    auth(),
   ]);
+  const isLoggedIn = Boolean(session?.user);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -326,28 +329,31 @@ export default async function LandingPage() {
           <div className="container relative grid gap-8 md:grid-cols-[2fr_1fr] md:items-center">
             <div className="space-y-4">
               <h2 className="font-display text-3xl font-extrabold tracking-tight md:text-5xl">
-                Pronto para proteger mais gente?
+                {isLoggedIn
+                  ? "Pronto para registrar outro alerta?"
+                  : "Pronto para proteger mais gente?"}
               </h2>
               <p className="max-w-xl text-lg text-primary-foreground/85">
-                Cadastre-se gratis. Cada denúncia sua pode impedir que dezenas de
-                outras pessoas caiam no mesmo golpe.
+                {isLoggedIn
+                  ? "Use sua conta para denunciar, acompanhar seus alertas e ajudar a comunidade a validar golpes."
+                  : "Cadastre-se gratis. Cada denuncia sua pode impedir que dezenas de outras pessoas caiam no mesmo golpe."}
               </p>
             </div>
             <div className="flex flex-col gap-3 md:items-end">
-              <Link href="/cadastrar" className="w-full md:w-auto">
+              <Link href={isLoggedIn ? "/denunciar" : "/cadastrar"} className="w-full md:w-auto">
                 <Button
                   size="xl"
                   className="w-full bg-white text-primary shadow-xl hover:bg-white/90 md:w-auto"
                 >
-                  Criar conta gratis
+                  {isLoggedIn ? "Nova denuncia" : "Criar conta gratis"}
                   <ArrowRight aria-hidden="true" />
                 </Button>
               </Link>
               <Link
-                href="/feed"
+                href={isLoggedIn ? "/minhas-denuncias" : "/feed"}
                 className="text-sm font-medium text-primary-foreground/80 underline-offset-4 hover:underline"
               >
-                Quero so ver o feed antes
+                {isLoggedIn ? "Ver minhas denuncias" : "Quero so ver o feed antes"}
               </Link>
             </div>
           </div>

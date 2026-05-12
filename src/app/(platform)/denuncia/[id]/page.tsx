@@ -17,6 +17,7 @@ import { VoteButtons } from "@/components/vote-buttons";
 import { ShareCard } from "@/components/share-card";
 import { ReportCard } from "@/components/report-card";
 import { CommentsSection } from "@/components/comments-section";
+import { AdminReportActions } from "@/components/admin-report-actions";
 import { Button } from "@/components/ui/button";
 import { fetchReportById, fetchAllReports } from "@/lib/data-source";
 import { getCategoryById } from "@/lib/categories";
@@ -81,18 +82,21 @@ export default async function DenunciaPage({ params }: DenunciaPageProps) {
       </nav>
 
       <header className="mb-6 space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="gap-1.5">
-            <Icon className="size-3.5" aria-hidden="true" />
-            {category.label}
-          </Badge>
-          <RiskBadge level={report.riskLevel} size="md" />
-          {report.verified && (
-            <Badge variant="success" className="gap-1">
-              <BadgeCheck className="size-3.5" aria-hidden="true" />
-              Verificada pela comunidade
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="gap-1.5">
+              <Icon className="size-3.5" aria-hidden="true" />
+              {category.label}
             </Badge>
-          )}
+            <RiskBadge level={report.riskLevel} size="md" />
+            {report.verified && (
+              <Badge variant="success" className="gap-1">
+                <BadgeCheck className="size-3.5" aria-hidden="true" />
+                Verificada pela comunidade
+              </Badge>
+            )}
+          </div>
+          <AdminReportActions reportId={report.id} compact />
         </div>
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <span>{timeAgo(report.createdAt)}</span>
@@ -164,7 +168,7 @@ export default async function DenunciaPage({ params }: DenunciaPageProps) {
               <MessageCircle className="size-5 text-primary" aria-hidden="true" />
               Comentários ({report.comments})
             </h2>
-            <CommentsSection reportId={report.id} />
+            <CommentsSection reportId={report.id} initialCount={report.comments} />
           </Card>
 
           <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border p-5 sm:flex-row sm:items-center sm:justify-between">

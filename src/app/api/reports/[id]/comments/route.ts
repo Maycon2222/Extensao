@@ -3,6 +3,11 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { addComment } from "@/lib/services/reports";
 import { commentSchema } from "@/lib/validations/report";
+import {
+  addMockComment,
+  getMockComments,
+  getMockReportById,
+} from "@/lib/mock-report-store";
 
 /**
  * POST /api/reports/:id/comments
@@ -30,6 +35,26 @@ export async function POST(
         { error: "Dados invalidos", issues: parsed.error.flatten() },
         { status: 400 }
       );
+    }
+
+    if (process.env.OPA_FORCE_MOCK === "true") {
+      const report = getMockReportById(id);
+      if (!report) {
+        return NextResponse.json(
+          { error: "Denúncia não encontrada" },
+          { status: 404 }
+        );
+      }
+
+      const comment = addMockComment({
+        reportId: id,
+        userId: session.user.id,
+        username: session.user.username,
+        reputationTier: session.user.reputationTier,
+        content: parsed.data.content,
+      });
+
+      return NextResponse.json(comment, { status: 201 });
     }
 
     const report = await db.report.findUnique({
@@ -73,6 +98,10 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
+    if (process.env.OPA_FORCE_MOCK === "true") {
+      return NextResponse.json({ items: getMockComments(id) });
+    }
+
     const comments = await db.comment.findMany({
       where: { reportId: id, hidden: false },
       orderBy: { createdAt: "desc" },

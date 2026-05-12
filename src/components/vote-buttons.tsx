@@ -86,8 +86,6 @@ export function VoteButtons({ reportId, initialUp, initialDown }: VoteButtonsPro
         setUp(data.stats.votesUp);
         setDown(data.stats.votesDown);
       }
-      // Re-fetch server components se necessário
-      router.refresh();
     } catch (err) {
       console.error(err);
       setVote(prevVote);

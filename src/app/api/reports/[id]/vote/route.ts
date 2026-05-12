@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { castVote } from "@/lib/services/reports";
 import { voteSchema } from "@/lib/validations/report";
+import { castMockVote, getMockReportById } from "@/lib/mock-report-store";
 
 /**
  * POST /api/reports/:id/vote
@@ -35,6 +36,31 @@ export async function POST(
     }
 
     // Não pode votar na própria denúncia
+    if (process.env.OPA_FORCE_MOCK === "true") {
+      const report = getMockReportById(id);
+      if (!report) {
+        return NextResponse.json(
+          { error: "Denúncia não encontrada" },
+          { status: 404 }
+        );
+      }
+
+      if (report.author.username === session.user.username) {
+        return NextResponse.json(
+          { error: "Você não pode votar na própria denúncia" },
+          { status: 403 }
+        );
+      }
+
+      const result = castMockVote({
+        reportId: id,
+        userId: session.user.id,
+        type: parsed.data.type,
+      });
+
+      return NextResponse.json(result);
+    }
+
     const report = await db.report.findUnique({
       where: { id },
       select: { authorId: true, status: true },

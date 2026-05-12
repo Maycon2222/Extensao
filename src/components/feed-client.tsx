@@ -12,7 +12,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReportCard } from "@/components/report-card";
-import { FeedFilters } from "@/components/feed-filters";
+import {
+  FeedFilters,
+  REGION_OPTIONS,
+  type RegionValue,
+} from "@/components/feed-filters";
 import type { Report } from "@/lib/mock-data";
 import type { FraudCategoryId } from "@/lib/categories";
 import { cn, type RiskLevel } from "@/lib/utils";
@@ -36,6 +40,7 @@ export function FeedClient({ reports }: { reports: Report[] }) {
   const [categories, setCategories] = useState<FraudCategoryId[]>([]);
   const [risks, setRisks] = useState<RiskLevel[]>([]);
   const [period, setPeriod] = useState("all");
+  const [region, setRegion] = useState<RegionValue>("all");
   const [sort, setSort] = useState<SortKey>("recent");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -55,6 +60,12 @@ export function FeedClient({ reports }: { reports: Report[] }) {
         (r) => now - new Date(r.createdAt).getTime() < hours * 60 * 60 * 1000
       );
     }
+    if (region !== "all") {
+      const selectedRegion = REGION_OPTIONS.find((option) => option.value === region);
+      if (selectedRegion?.uf) {
+        list = list.filter((r) => r.location.trim().endsWith(`, ${selectedRegion.uf}`));
+      }
+    }
 
     switch (sort) {
       case "voted":
@@ -72,15 +83,16 @@ export function FeedClient({ reports }: { reports: Report[] }) {
     }
 
     return list;
-  }, [reports, categories, risks, period, sort]);
+  }, [reports, categories, risks, period, region, sort]);
 
   const activeFilterCount =
-    categories.length + risks.length + (period !== "all" ? 1 : 0);
+    categories.length + risks.length + (period !== "all" ? 1 : 0) + (region !== "all" ? 1 : 0);
 
   const clearFilters = () => {
     setCategories([]);
     setRisks([]);
     setPeriod("all");
+    setRegion("all");
   };
 
   return (
@@ -97,6 +109,8 @@ export function FeedClient({ reports }: { reports: Report[] }) {
             onRisksChange={setRisks}
             period={period}
             onPeriodChange={setPeriod}
+            region={region}
+            onRegionChange={setRegion}
             onClear={clearFilters}
           />
         </div>
@@ -216,6 +230,8 @@ export function FeedClient({ reports }: { reports: Report[] }) {
               onRisksChange={setRisks}
               period={period}
               onPeriodChange={setPeriod}
+              region={region}
+              onRegionChange={setRegion}
               onClear={clearFilters}
               onClose={() => setFiltersOpen(false)}
             />

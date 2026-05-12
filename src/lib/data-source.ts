@@ -14,10 +14,14 @@
 import { db } from "@/lib/db";
 import { adaptReport } from "@/lib/report-adapter";
 import {
-  MOCK_REPORTS,
   PLATFORM_STATS,
   type Report,
 } from "@/lib/mock-data";
+import {
+  getMockReportById,
+  getMockReports,
+  searchMockReports,
+} from "@/lib/mock-report-store";
 import { searchReports as dbSearch } from "@/lib/services/reports";
 
 const REPORT_INCLUDE = {
@@ -83,7 +87,7 @@ export async function fetchRecentReports(limit = 12): Promise<Report[]> {
       return items.map((r) => adaptReport(r));
     },
     () =>
-      [...MOCK_REPORTS]
+      getMockReports()
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
         .slice(0, limit)
   );
@@ -100,7 +104,7 @@ export async function fetchAllReports(): Promise<Report[]> {
       });
       return items.map((r) => adaptReport(r));
     },
-    () => MOCK_REPORTS
+    () => getMockReports()
   );
 }
 
@@ -113,7 +117,7 @@ export async function fetchReportById(id: string): Promise<Report | null> {
       });
       return r ? adaptReport(r) : null;
     },
-    () => MOCK_REPORTS.find((r) => r.id === id) ?? null
+    () => getMockReportById(id)
   );
 }
 
@@ -123,17 +127,7 @@ export async function fetchSearchResults(query: string) {
       const { matches } = await dbSearch(query);
       return matches.map((r) => adaptReport(r));
     },
-    () => {
-      const q = query.trim().toLowerCase();
-      const digits = q.replace(/\D/g, "");
-      return MOCK_REPORTS.filter((r) => {
-        const id = r.identifier.toLowerCase();
-        if (r.identifierType === "url") {
-          return id.includes(q) || q.includes(id.split(".")[0]);
-        }
-        return digits.length > 0 && id.includes(digits);
-      });
-    }
+    () => searchMockReports(query)
   );
 }
 

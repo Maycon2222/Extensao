@@ -22,6 +22,39 @@ const PERIOD_OPTIONS = [
   { value: "all", label: "Todos" },
 ];
 
+export const REGION_OPTIONS = [
+  { value: "all", label: "Todo o Brasil", uf: null },
+  { value: "ac", label: "Acre", uf: "AC" },
+  { value: "al", label: "Alagoas", uf: "AL" },
+  { value: "ap", label: "Amapá", uf: "AP" },
+  { value: "am", label: "Amazonas", uf: "AM" },
+  { value: "ba", label: "Bahia", uf: "BA" },
+  { value: "ce", label: "Ceará", uf: "CE" },
+  { value: "df", label: "Distrito Federal", uf: "DF" },
+  { value: "es", label: "Espírito Santo", uf: "ES" },
+  { value: "go", label: "Goiás", uf: "GO" },
+  { value: "ma", label: "Maranhão", uf: "MA" },
+  { value: "mt", label: "Mato Grosso", uf: "MT" },
+  { value: "ms", label: "Mato Grosso do Sul", uf: "MS" },
+  { value: "mg", label: "Minas Gerais", uf: "MG" },
+  { value: "pa", label: "Pará", uf: "PA" },
+  { value: "pb", label: "Paraíba", uf: "PB" },
+  { value: "pr", label: "Paraná", uf: "PR" },
+  { value: "pe", label: "Pernambuco", uf: "PE" },
+  { value: "pi", label: "Piauí", uf: "PI" },
+  { value: "rj", label: "Rio de Janeiro", uf: "RJ" },
+  { value: "rn", label: "Rio Grande do Norte", uf: "RN" },
+  { value: "rs", label: "Rio Grande do Sul", uf: "RS" },
+  { value: "ro", label: "Rondônia", uf: "RO" },
+  { value: "rr", label: "Roraima", uf: "RR" },
+  { value: "sc", label: "Santa Catarina", uf: "SC" },
+  { value: "sp", label: "São Paulo", uf: "SP" },
+  { value: "se", label: "Sergipe", uf: "SE" },
+  { value: "to", label: "Tocantins", uf: "TO" },
+] as const;
+
+export type RegionValue = (typeof REGION_OPTIONS)[number]["value"];
+
 interface FeedFiltersProps {
   categories: FraudCategoryId[];
   onCategoriesChange: (ids: FraudCategoryId[]) => void;
@@ -29,6 +62,8 @@ interface FeedFiltersProps {
   onRisksChange: (levels: RiskLevel[]) => void;
   period: string;
   onPeriodChange: (p: string) => void;
+  region: RegionValue;
+  onRegionChange: (region: RegionValue) => void;
   onClear: () => void;
   mobile?: boolean;
   onClose?: () => void;
@@ -41,6 +76,8 @@ export function FeedFilters({
   onRisksChange,
   period,
   onPeriodChange,
+  region,
+  onRegionChange,
   onClear,
   mobile,
   onClose,
@@ -61,7 +98,8 @@ export function FeedFilters({
     );
   };
 
-  const hasFilters = categories.length > 0 || risks.length > 0 || period !== "all";
+  const hasFilters =
+    categories.length > 0 || risks.length > 0 || period !== "all" || region !== "all";
 
   return (
     <div
@@ -183,8 +221,9 @@ export function FeedFilters({
         </Label>
         <select
           id="region-select"
+          value={region}
+          onChange={(event) => onRegionChange(event.target.value as RegionValue)}
           className="flex h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          defaultValue="all"
         >
           <option value="all">Todo o Brasil</option>
           <option value="sp">São Paulo</option>

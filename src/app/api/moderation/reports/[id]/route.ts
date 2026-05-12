@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { moderationActionSchema } from "@/lib/validations/report";
+import { getMockReportById, removeMockReport } from "@/lib/mock-report-store";
 
 /**
  * PATCH /api/moderation/reports/:id
@@ -33,6 +34,23 @@ export async function PATCH(
         { error: "Ação inválida", issues: parsed.error.flatten() },
         { status: 400 }
       );
+    }
+
+    if (process.env.OPA_FORCE_MOCK === "true") {
+      const report = getMockReportById(id);
+      if (!report) {
+        return NextResponse.json(
+          { error: "Denúncia não encontrada" },
+          { status: 404 }
+        );
+      }
+
+      if (parsed.data.action === "REMOVE" || parsed.data.action === "HIDE") {
+        removeMockReport(id);
+        return NextResponse.json({ success: true, status: "REMOVED" });
+      }
+
+      return NextResponse.json({ success: true, status: "PUBLISHED" });
     }
 
     const report = await db.report.findUnique({ where: { id } });

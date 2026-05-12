@@ -148,7 +148,8 @@ export function LoginForm() {
       </Button>
 
       <div className="rounded-lg border border-border bg-muted/10 p-3 text-xs text-muted-foreground">
-        <p className="font-semibold text-foreground">Conta de teste:</p>
+        <p className="font-semibold text-foreground">Contas de teste:</p>
+        <p>admin@opa.app · senha: <span className="font-mono">senha123</span></p>
         <p>maria@example.com · senha: <span className="font-mono">senha123</span></p>
       </div>
     </form>

@@ -15,7 +15,38 @@ Plataforma colaborativa brasileira contra golpes digitais.
 - Node.js 20+
 - Docker Desktop (para PostgreSQL local) ou instancia PostgreSQL remota
 
-### Passos
+### Rodar rapido em modo demo
+
+Use este modo quando quiser testar a interface sem subir PostgreSQL. Ele usa dados em memoria e habilita login mock.
+
+Crie ou edite o arquivo `.env`:
+
+```env
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="dev-secret-change-me"
+DATABASE_URL="postgresql://opa:opa@localhost:5432/opa?schema=public"
+OPA_FORCE_MOCK="true"
+```
+
+Depois rode:
+
+```bash
+npm install
+npm run dev
+```
+
+Acesse `http://localhost:3000`.
+
+Contas disponiveis no modo demo:
+
+| Email | Senha | Perfil |
+|-------|-------|--------|
+| admin@opa.app | senha123 | Administrador |
+| maria@example.com | senha123 | Usuario |
+
+No modo demo, denuncias, votos e comentarios criados ficam em memoria enquanto o servidor local estiver rodando.
+
+### Rodar com PostgreSQL
 
 ```bash
 # 1. Instalar dependencias
@@ -52,6 +83,18 @@ Acesse `http://localhost:3000`.
 | rafael@example.com | senha123 | Diamante |
 | pedro@example.com | senha123 | Prata |
 | lucas@example.com | senha123 | Bronze |
+
+## Funcionalidades recentes
+
+- Login mock para testar localmente sem banco.
+- Feed com filtro por estado e cidades separadas no formulario de denuncia.
+- Formulario de denuncia com rascunho salvo no navegador.
+- Upload de evidencias com previews dentro da area de selecao.
+- Pagina "Minhas denuncias".
+- Paginas de Termos de Uso e Politica de Moderacao.
+- Votos e comentarios funcionam no modo demo.
+- Admin/moderador pode excluir denuncias pelo feed ou pela pagina de detalhe.
+- CTA da landing muda quando o usuario ja esta logado.
 
 ## Scripts
 

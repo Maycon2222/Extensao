@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -32,12 +32,88 @@ const STEPS = [
   { id: 4, label: "Revisar" },
 ];
 
+const BRAZIL_STATES = [
+  { uf: "AC", name: "Acre" },
+  { uf: "AL", name: "Alagoas" },
+  { uf: "AP", name: "Amapá" },
+  { uf: "AM", name: "Amazonas" },
+  { uf: "BA", name: "Bahia" },
+  { uf: "CE", name: "Ceará" },
+  { uf: "DF", name: "Distrito Federal" },
+  { uf: "ES", name: "Espírito Santo" },
+  { uf: "GO", name: "Goiás" },
+  { uf: "MA", name: "Maranhão" },
+  { uf: "MT", name: "Mato Grosso" },
+  { uf: "MS", name: "Mato Grosso do Sul" },
+  { uf: "MG", name: "Minas Gerais" },
+  { uf: "PA", name: "Pará" },
+  { uf: "PB", name: "Paraíba" },
+  { uf: "PR", name: "Paraná" },
+  { uf: "PE", name: "Pernambuco" },
+  { uf: "PI", name: "Piauí" },
+  { uf: "RJ", name: "Rio de Janeiro" },
+  { uf: "RN", name: "Rio Grande do Norte" },
+  { uf: "RS", name: "Rio Grande do Sul" },
+  { uf: "RO", name: "Rondônia" },
+  { uf: "RR", name: "Roraima" },
+  { uf: "SC", name: "Santa Catarina" },
+  { uf: "SP", name: "São Paulo" },
+  { uf: "SE", name: "Sergipe" },
+  { uf: "TO", name: "Tocantins" },
+];
+
+const DRAFT_STORAGE_KEY = "opa:denuncia-draft";
+
+interface DenunciaDraft {
+  step: number;
+  category: FraudCategoryId | null;
+  identifier: string;
+  description: string;
+  locationState: string;
+  locationCity: string;
+  location: string;
+  occurredAt: string;
+  accepted: { terms: boolean; truth: boolean };
+}
+
+const CITIES_BY_STATE: Record<string, string[]> = {
+  AC: ["Rio Branco", "Cruzeiro do Sul", "Sena Madureira", "Tarauacá", "Feijó", "Brasiléia", "Xapuri", "Plácido de Castro", "Mâncio Lima", "Epitaciolândia"],
+  AL: ["Maceió", "Arapiraca", "Rio Largo", "Palmeira dos Índios", "União dos Palmares", "Penedo", "Coruripe", "São Miguel dos Campos", "Campo Alegre", "Delmiro Gouveia"],
+  AP: ["Macapá", "Santana", "Laranjal do Jari", "Oiapoque", "Mazagão", "Porto Grande", "Tartarugalzinho", "Pedra Branca do Amapari", "Vitória do Jari", "Calçoene"],
+  AM: ["Manaus", "Parintins", "Itacoatiara", "Manacapuru", "Coari", "Tefé", "Tabatinga", "Maués", "Iranduba", "Humaitá", "São Gabriel da Cachoeira", "Eirunepé"],
+  BA: ["Salvador", "Feira de Santana", "Vitória da Conquista", "Camaçari", "Juazeiro", "Lauro de Freitas", "Itabuna", "Ilhéus", "Jequié", "Barreiras", "Alagoinhas", "Porto Seguro", "Teixeira de Freitas", "Simões Filho"],
+  CE: ["Fortaleza", "Caucaia", "Juazeiro do Norte", "Sobral", "Maracanaú", "Crato", "Itapipoca", "Maranguape", "Iguatu", "Quixadá", "Canindé", "Aquiraz", "Pacatuba", "Russas"],
+  DF: ["Brasília", "Ceilândia", "Taguatinga", "Samambaia", "Planaltina", "Águas Claras", "Gama", "Guará", "Sobradinho", "Recanto das Emas", "Santa Maria", "São Sebastião"],
+  ES: ["Vitória", "Vila Velha", "Serra", "Cariacica", "Linhares", "Cachoeiro de Itapemirim", "Colatina", "Guarapari", "São Mateus", "Aracruz", "Viana", "Nova Venécia"],
+  GO: ["Goiânia", "Aparecida de Goiânia", "Anápolis", "Rio Verde", "Águas Lindas de Goiás", "Luziânia", "Valparaíso de Goiás", "Trindade", "Formosa", "Novo Gama", "Catalão", "Itumbiara", "Jataí", "Senador Canedo"],
+  MA: ["São Luís", "Imperatriz", "Timon", "Caxias", "Codó", "Paço do Lumiar", "Açailândia", "Bacabal", "Balsas", "Santa Inês", "Barra do Corda", "Chapadinha"],
+  MT: ["Cuiabá", "Várzea Grande", "Rondonópolis", "Sinop", "Tangará da Serra", "Cáceres", "Sorriso", "Lucas do Rio Verde", "Primavera do Leste", "Barra do Garças", "Alta Floresta", "Pontes e Lacerda"],
+  MS: ["Campo Grande", "Dourados", "Três Lagoas", "Corumbá", "Ponta Porã", "Naviraí", "Nova Andradina", "Sidrolândia", "Aquidauana", "Maracaju", "Paranaíba", "Coxim"],
+  MG: ["Belo Horizonte", "Uberlândia", "Contagem", "Juiz de Fora", "Betim", "Montes Claros", "Ribeirão das Neves", "Uberaba", "Governador Valadares", "Ipatinga", "Sete Lagoas", "Divinópolis", "Santa Luzia", "Ibirité", "Poços de Caldas", "Patos de Minas"],
+  PA: ["Belém", "Ananindeua", "Santarém", "Marabá", "Parauapebas", "Castanhal", "Abaetetuba", "Cametá", "Marituba", "Bragança", "Altamira", "Tucuruí", "Barcarena", "Itaituba"],
+  PB: ["João Pessoa", "Campina Grande", "Santa Rita", "Patos", "Bayeux", "Sousa", "Cabedelo", "Cajazeiras", "Guarabira", "Sapé", "Mamanguape", "Queimadas"],
+  PR: ["Curitiba", "Londrina", "Maringá", "Ponta Grossa", "Cascavel", "São José dos Pinhais", "Foz do Iguaçu", "Colombo", "Guarapuava", "Paranaguá", "Araucária", "Toledo", "Apucarana", "Campo Largo"],
+  PE: ["Recife", "Jaboatão dos Guararapes", "Olinda", "Caruaru", "Petrolina", "Paulista", "Cabo de Santo Agostinho", "Camaragibe", "Garanhuns", "Vitória de Santo Antão", "Igarassu", "São Lourenço da Mata"],
+  PI: ["Teresina", "Parnaíba", "Picos", "Piripiri", "Floriano", "Campo Maior", "Barras", "União", "Altos", "José de Freitas", "Pedro II", "Oeiras"],
+  RJ: ["Rio de Janeiro", "São Gonçalo", "Duque de Caxias", "Niterói", "Nova Iguaçu", "Belford Roxo", "Campos dos Goytacazes", "São João de Meriti", "Petrópolis", "Volta Redonda", "Magé", "Macaé", "Itaboraí", "Cabo Frio", "Angra dos Reis", "Nova Friburgo"],
+  RN: ["Natal", "Mossoró", "Parnamirim", "São Gonçalo do Amarante", "Macaíba", "Ceará-Mirim", "Caicó", "Assú", "Currais Novos", "São José de Mipibu", "Santa Cruz", "Apodi"],
+  RS: ["Porto Alegre", "Caxias do Sul", "Canoas", "Pelotas", "Santa Maria", "Gravataí", "Viamão", "Novo Hamburgo", "São Leopoldo", "Rio Grande", "Alvorada", "Passo Fundo", "Sapucaia do Sul", "Uruguaiana"],
+  RO: ["Porto Velho", "Ji-Paraná", "Ariquemes", "Vilhena", "Cacoal", "Rolim de Moura", "Jaru", "Guajará-Mirim", "Machadinho d'Oeste", "Buritis", "Pimenta Bueno", "Ouro Preto do Oeste"],
+  RR: ["Boa Vista", "Rorainópolis", "Caracaraí", "Alto Alegre", "Mucajaí", "Cantá", "Pacaraima", "Bonfim", "Amajari", "Normandia"],
+  SC: ["Florianópolis", "Joinville", "Blumenau", "Chapecó", "São José", "Criciúma", "Itajaí", "Jaraguá do Sul", "Palhoça", "Lages", "Balneário Camboriú", "Brusque", "Tubarão", "Camboriú"],
+  SP: ["São Paulo", "Campinas", "Guarulhos", "Santos", "Ribeirão Preto", "São Bernardo do Campo", "São José dos Campos", "Santo André", "Osasco", "Sorocaba", "Mauá", "São José do Rio Preto", "Mogi das Cruzes", "Jundiaí", "Piracicaba", "Bauru", "São Vicente", "Franca", "Praia Grande", "Taubaté"],
+  SE: ["Aracaju", "Nossa Senhora do Socorro", "Lagarto", "Itabaiana", "São Cristóvão", "Estância", "Tobias Barreto", "Itabaianinha", "Simão Dias", "Nossa Senhora da Glória"],
+  TO: ["Palmas", "Araguaína", "Gurupi", "Porto Nacional", "Paraíso do Tocantins", "Colinas do Tocantins", "Guaraí", "Tocantinópolis", "Dianópolis", "Formoso do Araguaia", "Miracema do Tocantins", "Augustinópolis"],
+};
+
 export default function DenunciarPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState<FraudCategoryId | null>(null);
   const [identifier, setIdentifier] = useState("");
   const [description, setDescription] = useState("");
+  const [locationState, setLocationState] = useState("");
+  const [locationCity, setLocationCity] = useState("");
   const [location, setLocation] = useState("");
   const [occurredAt, setOccurredAt] = useState(
     new Date().toISOString().split("T")[0]
@@ -45,6 +121,65 @@ export default function DenunciarPage() {
   const [evidences, setEvidences] = useState<File[]>([]);
   const [accepted, setAccepted] = useState({ terms: false, truth: false });
   const [submitting, setSubmitting] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) {
+        setDraftLoaded(true);
+        return;
+      }
+
+      const draft = JSON.parse(raw) as Partial<DenunciaDraft>;
+      setStep(
+        typeof draft.step === "number" && draft.step >= 1 && draft.step <= 4
+          ? draft.step
+          : 1
+      );
+      setCategory(draft.category ?? null);
+      setIdentifier(draft.identifier ?? "");
+      setDescription(draft.description ?? "");
+      setLocationState(draft.locationState ?? "");
+      setLocationCity(draft.locationCity ?? "");
+      setLocation(draft.location ?? "");
+      setOccurredAt(draft.occurredAt ?? new Date().toISOString().split("T")[0]);
+      setAccepted(draft.accepted ?? { terms: false, truth: false });
+    } catch {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } finally {
+      setDraftLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftLoaded) return;
+
+    const draft: DenunciaDraft = {
+      step,
+      category,
+      identifier,
+      description,
+      locationState,
+      locationCity,
+      location,
+      occurredAt,
+      accepted,
+    };
+
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  }, [
+    accepted,
+    category,
+    description,
+    draftLoaded,
+    identifier,
+    location,
+    locationCity,
+    locationState,
+    occurredAt,
+    step,
+  ]);
 
   const canAdvance = () => {
     if (step === 1) return category !== null;
@@ -105,10 +240,12 @@ export default function DenunciarPage() {
       }
 
       toast.success("Denúncia publicada!", {
-        description:
-          "Obrigado por contribuir. Sua denúncia já está disponível para a comunidade validar.",
+        description: data.mockMode
+          ? "Modo demonstração: a denúncia foi validada, mas não foi salva no banco local."
+          : "Obrigado por contribuir. Sua denúncia já está disponível para a comunidade validar.",
       });
-      router.push(`/denuncia/${data.id}`);
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      router.push(data.mockMode ? "/feed" : `/denuncia/${data.id}`);
     } catch (err) {
       console.error(err);
       toast.error("Erro de conexão. Tente novamente.");
@@ -145,8 +282,17 @@ export default function DenunciarPage() {
             onIdentifierChange={setIdentifier}
             description={description}
             onDescriptionChange={setDescription}
-            location={location}
-            onLocationChange={setLocation}
+            locationState={locationState}
+            locationCity={locationCity}
+            onLocationStateChange={(uf) => {
+              setLocationState(uf);
+              setLocationCity("");
+              setLocation("");
+            }}
+            onLocationCityChange={(city) => {
+              setLocationCity(city);
+              setLocation(city && locationState ? `${city}, ${locationState}` : "");
+            }}
             occurredAt={occurredAt}
             onOccurredAtChange={setOccurredAt}
           />
@@ -349,8 +495,10 @@ function StepDetails({
   onIdentifierChange,
   description,
   onDescriptionChange,
-  location,
-  onLocationChange,
+  locationState,
+  locationCity,
+  onLocationStateChange,
+  onLocationCityChange,
   occurredAt,
   onOccurredAtChange,
 }: {
@@ -359,8 +507,10 @@ function StepDetails({
   onIdentifierChange: (v: string) => void;
   description: string;
   onDescriptionChange: (v: string) => void;
-  location: string;
-  onLocationChange: (v: string) => void;
+  locationState: string;
+  locationCity: string;
+  onLocationStateChange: (v: string) => void;
+  onLocationCityChange: (v: string) => void;
   occurredAt: string;
   onOccurredAtChange: (v: string) => void;
 }) {
@@ -371,6 +521,7 @@ function StepDetails({
     cnpj: "00.000.000/0000-00",
     mixed: "Link, telefone ou CNPJ",
   };
+  const cityOptions = locationState ? CITIES_BY_STATE[locationState] ?? [] : [];
 
   return (
     <section aria-labelledby="step2-heading" className="space-y-5">
@@ -425,17 +576,47 @@ function StepDetails({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
-            <Label htmlFor="location">
-              Região (cidade/estado) <RequiredMark />
+            <Label htmlFor="locationState">
+              Estado <RequiredMark />
             </Label>
-            <Input
-              id="location"
-              value={location}
-              onChange={(e) => onLocationChange(e.target.value)}
-              placeholder="São Paulo, SP"
-            />
+            <select
+              id="locationState"
+              value={locationState}
+              onChange={(e) => onLocationStateChange(e.target.value)}
+              className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              required
+            >
+              <option value="">Selecione o estado</option>
+              {BRAZIL_STATES.map((state) => (
+                <option key={state.uf} value={state.uf}>
+                  {state.name} ({state.uf})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="locationCity">
+              Cidade <RequiredMark />
+            </Label>
+            <select
+              id="locationCity"
+              value={locationCity}
+              onChange={(e) => onLocationCityChange(e.target.value)}
+              className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!locationState}
+              required
+            >
+              <option value="">
+                {locationState ? "Selecione a cidade" : "Selecione o estado primeiro"}
+              </option>
+              {cityOptions.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="occurredAt">Data do ocorrido</Label>
@@ -476,71 +657,84 @@ function StepEvidence({
     <section aria-labelledby="step3-heading" className="space-y-5">
       <div>
         <h2 id="step3-heading" className="text-lg font-bold">
-          Evidências (opcional)
+          Evidencias (opcional)
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Adicione screenshots que comprovem o golpe. Máximo 3 arquivos.
+          Adicione screenshots que comprovem o golpe. Maximo 3 arquivos.
         </p>
       </div>
 
       <WarningCallout tone="warning">
-        <span className="font-semibold">Antes de enviar:</span> borre fotos de perfil, nomes completos e números de telefone visiveis. Screenshots passam por moderação antes de serem publicados.
+        <span className="font-semibold">Antes de enviar:</span> borre fotos de perfil, nomes completos e numeros de telefone visiveis. Screenshots passam por moderacao antes de serem publicados.
       </WarningCallout>
 
-      <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center transition-colors hover:border-primary/40 hover:bg-muted/5">
-        <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <UploadCloud className="size-6" aria-hidden="true" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold">Clique para selecionar ou arraste arquivos</p>
-          <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, WEBP · até 5MB cada · até 3 arquivos</p>
-        </div>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          className="sr-only"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
-      </label>
-
-      {evidences.length > 0 && (
-        <div className="space-y-2">
+      <div className="rounded-xl border-2 border-dashed border-border bg-card p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Arquivos selecionados ({evidences.length}/3)
+            Evidencias adicionadas ({evidences.length}/3)
           </p>
-          <ul className="grid gap-2 sm:grid-cols-3">
-            {evidences.map((file, idx) => (
-              <li
-                key={idx}
-                className="relative overflow-hidden rounded-xl border border-border bg-card"
-              >
-                <div className="flex aspect-video items-center justify-center bg-muted/20">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt={`Evidência ${idx + 1}`}
-                    className="size-full object-cover"
-                  />
-                </div>
-                <div className="flex items-center justify-between px-3 py-2">
-                  <span className="truncate text-xs text-muted-foreground">
-                    {file.name}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(idx)}
-                    aria-label={`Remover arquivo ${file.name}`}
-                    className="flex size-7 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <p className="text-xs text-muted-foreground">PNG, JPG, WEBP - ate 5MB cada</p>
         </div>
-      )}
+
+        <ul className="grid gap-3 sm:grid-cols-3">
+          {evidences.map((file, idx) => (
+            <li
+              key={`${file.name}-${idx}`}
+              className="relative overflow-hidden rounded-lg border border-border bg-background"
+            >
+              <div className="flex aspect-video items-center justify-center bg-muted/20">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt={`Evidencia ${idx + 1}`}
+                  className="size-full object-cover"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
+                <span className="min-w-0 truncate text-xs text-muted-foreground">
+                  {file.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeFile(idx)}
+                  aria-label={`Remover arquivo ${file.name}`}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            </li>
+          ))}
+
+          {evidences.length < 3 && (
+            <li>
+              <label className="flex aspect-video cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 text-center transition-colors hover:border-primary hover:bg-primary/10">
+                <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <UploadCloud className="size-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">
+                    {evidences.length === 0 ? "Selecionar arquivos" : "Adicionar mais"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {3 - evidences.length} vaga{3 - evidences.length > 1 ? "s" : ""} restante{3 - evidences.length > 1 ? "s" : ""}
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  onChange={(e) => {
+                    handleFiles(e.target.files);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </li>
+          )}
+        </ul>
+      </div>
     </section>
   );
 }
@@ -632,11 +826,11 @@ function StepReview({
           />
           <span className="text-sm leading-relaxed">
             Li e aceito os{" "}
-            <a href="/termos" className="font-medium text-primary underline-offset-4 hover:underline">
+            <a href="/termos" target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">
               Termos de Uso
             </a>{" "}
             e a{" "}
-            <a href="/moderacao" className="font-medium text-primary underline-offset-4 hover:underline">
+            <a href="/moderacao" target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">
               Política de Moderação
             </a>
             .
@@ -698,14 +892,21 @@ function WarningCallout({
   tone?: "info" | "warning";
 }) {
   const Icon = tone === "warning" ? AlertTriangle : Info;
-  const color =
+  const styles =
     tone === "warning"
-      ? "border-warning/40 bg-warning/10 text-warning-foreground"
-      : "border-primary/30 bg-primary/5 text-foreground";
+      ? {
+          container:
+            "border-amber-400/70 bg-amber-400/15 text-amber-50 shadow-[0_0_0_1px_rgba(251,191,36,0.18)]",
+          icon: "text-amber-300",
+        }
+      : {
+          container: "border-primary/30 bg-primary/5 text-foreground",
+          icon: "text-primary",
+        };
   return (
-    <div className={cn("flex items-start gap-3 rounded-xl border p-4", color)}>
-      <Icon className="mt-0.5 size-5 shrink-0 text-warning-foreground" aria-hidden="true" />
-      <p className="text-sm leading-relaxed">{children}</p>
+    <div className={cn("flex items-start gap-3 rounded-xl border p-4", styles.container)}>
+      <Icon className={cn("mt-0.5 size-5 shrink-0", styles.icon)} aria-hidden="true" />
+      <p className="text-sm font-medium leading-relaxed">{children}</p>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthSessionProvider } from "@/components/session-provider";
+import { auth } from "@/lib/auth";
 import "./globals.css";
 
 const inter = Inter({
@@ -66,9 +67,11 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const session = await auth();
+
   return (
     <html
       lang="pt-BR"
@@ -76,7 +79,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="font-sans">
-        <AuthSessionProvider session={null}>
+        <AuthSessionProvider session={session}>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"

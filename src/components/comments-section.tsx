@@ -25,7 +25,13 @@ const TIER_LABEL = {
   DIAMANTE: "Diamante",
 };
 
-export function CommentsSection({ reportId }: { reportId: string }) {
+export function CommentsSection({
+  reportId,
+  initialCount = 0,
+}: {
+  reportId: string;
+  initialCount?: number;
+}) {
   const { data: session } = useSession();
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +111,9 @@ export function CommentsSection({ reportId }: { reportId: string }) {
         </div>
       ) : comments.length === 0 ? (
         <p className="py-4 text-center text-sm text-muted-foreground">
-          Seja o primeiro a comentar.
+          {initialCount > 0
+            ? `Há ${initialCount} comentário${initialCount > 1 ? "s" : ""} registrado${initialCount > 1 ? "s" : ""}, mas eles não estão carregados neste modo de demonstração.`
+            : "Seja o primeiro a comentar."}
         </p>
       ) : (
         <div className="space-y-4">

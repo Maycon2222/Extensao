@@ -6,6 +6,7 @@ import type { Report } from "@/lib/mock-data";
 import { Card } from "@/components/ui/card";
 import { RiskBadge } from "@/components/risk-badge";
 import { MaskedIdentifier } from "@/components/masked-identifier";
+import { AdminReportActions } from "@/components/admin-report-actions";
 
 interface ReportCardProps {
   report: Report;
@@ -26,7 +27,7 @@ export function ReportCard({ report, variant = "full", className }: ReportCardPr
     >
       <Link
         href={`/denuncia/${report.id}`}
-        className="flex h-full flex-col focus-visible:outline-none"
+        className="flex flex-1 flex-col focus-visible:outline-none"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
@@ -106,6 +107,7 @@ export function ReportCard({ report, variant = "full", className }: ReportCardPr
           </span>
         </div>
       </Link>
+      <AdminReportActions reportId={report.id} />
     </Card>
   );
 }

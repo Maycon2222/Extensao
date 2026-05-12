@@ -9,6 +9,7 @@ import {
   createReportSchema,
   listReportsSchema,
 } from "@/lib/validations/report";
+import { addMockReport } from "@/lib/mock-report-store";
 
 /**
  * GET /api/reports
@@ -72,6 +73,26 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Dados invalidos", issues: parsed.error.flatten() },
         { status: 400 }
+      );
+    }
+
+    if (process.env.OPA_FORCE_MOCK === "true") {
+      const report = addMockReport({
+        authorUsername: session.user.username,
+        category: parsed.data.category,
+        identifierType: parsed.data.identifierType,
+        identifier: parsed.data.identifier,
+        description: parsed.data.description,
+        location: parsed.data.location,
+        occurredAt: parsed.data.occurredAt,
+      });
+
+      return NextResponse.json(
+        {
+          ...report,
+          mockMode: true,
+        },
+        { status: 201 }
       );
     }
 
