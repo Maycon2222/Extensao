@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { Award, Calendar, ShieldPlus, ThumbsUp, MessageCircle, CheckCircle2 } from "lucide-react";
+import {
+  Award,
+  Calendar,
+  ShieldPlus,
+  ThumbsUp,
+  MessageCircle,
+  CheckCircle2,
+} from "lucide-react";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { Card } from "@/components/ui/card";
@@ -7,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ReportCard } from "@/components/report-card";
 import { adaptReport } from "@/lib/report-adapter";
 import { cn } from "@/lib/utils";
+import { getMockActivityStatsForUser } from "@/lib/mock-report-store";
 import type { Report } from "@/lib/mock-data";
 
 const TIER_COLOR: Record<string, string> = {
@@ -23,71 +31,102 @@ const TIER_LABEL: Record<string, string> = {
   DIAMANTE: "Diamante",
 };
 
+type Profile = {
+  name: string;
+  username: string;
+  email: string;
+  reputationScore: number;
+  reputationTier: "BRONZE" | "PRATA" | "OURO" | "DIAMANTE";
+  createdAt: Date;
+};
+
 export default async function PerfilPage() {
   const user = await requireAuth();
 
-  // Fallback gracioso se o banco não estiver disponível
-  let profile: {
-    name: string;
-    username: string;
-    email: string;
-    reputationScore: number;
-    reputationTier: "BRONZE" | "PRATA" | "OURO" | "DIAMANTE";
-    createdAt: Date;
-  };
+  let profile: Profile;
   let myReports: Report[] = [];
   let stats = { total: 0, verified: 0, votesCast: 0, comments: 0 };
 
-  try {
-    const [userData, reports, voteCount, commentCount] = await Promise.all([
-      db.user.findUniqueOrThrow({
-        where: { id: user.id },
-        select: {
-          name: true,
-          username: true,
-          email: true,
-          reputationScore: true,
-          reputationTier: true,
-          createdAt: true,
-        },
-      }),
-      db.report.findMany({
-        where: { authorId: user.id, status: "PUBLISHED" },
-        orderBy: { createdAt: "desc" },
-        take: 12,
-        include: {
-          author: {
-            select: {
-              id: true,
-              username: true,
-              name: true,
-              reputationTier: true,
+  const fallbackProfile: Profile = {
+    name: user.name ?? "Usuario",
+    username: user.username,
+    email: user.email ?? "",
+    reputationScore: 0,
+    reputationTier: user.reputationTier,
+    createdAt: new Date(),
+  };
+
+  if (process.env.OPA_FORCE_MOCK === "true") {
+    const mockStats = getMockActivityStatsForUser({
+      userId: user.id,
+      username: user.username,
+    });
+
+    profile = fallbackProfile;
+    myReports = mockStats.reports.slice(0, 12);
+    stats = {
+      total: mockStats.total,
+      verified: mockStats.verified,
+      votesCast: mockStats.votesCast,
+      comments: mockStats.comments,
+    };
+  } else {
+    try {
+      const [userData, reports, voteCount, commentCount] = await Promise.all([
+        db.user.findUniqueOrThrow({
+          where: { id: user.id },
+          select: {
+            name: true,
+            username: true,
+            email: true,
+            reputationScore: true,
+            reputationTier: true,
+            createdAt: true,
+          },
+        }),
+        db.report.findMany({
+          where: { authorId: user.id, status: "PUBLISHED" },
+          orderBy: { createdAt: "desc" },
+          take: 12,
+          include: {
+            author: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+                reputationTier: true,
+              },
             },
           },
-        },
-      }),
-      db.vote.count({ where: { userId: user.id } }),
-      db.comment.count({ where: { authorId: user.id, hidden: false } }),
-    ]);
+        }),
+        db.vote.count({ where: { userId: user.id } }),
+        db.comment.count({ where: { authorId: user.id, hidden: false } }),
+      ]);
 
-    profile = userData;
-    myReports = reports.map((r) => adaptReport(r));
-    stats = {
-      total: reports.length,
-      verified: reports.filter((r) => r.verified).length,
-      votesCast: voteCount,
-      comments: commentCount,
-    };
-  } catch (error) {
-    console.warn("[perfil] DB indisponivel:", (error as Error).message);
-    profile = {
-      name: user.name ?? "Usuário",
-      username: user.username,
-      email: user.email ?? "",
-      reputationScore: 0,
-      reputationTier: user.reputationTier,
-      createdAt: new Date(),
-    };
+      profile = userData;
+      myReports = reports.map((report) => adaptReport(report));
+      stats = {
+        total: reports.length,
+        verified: reports.filter((report) => report.verified).length,
+        votesCast: voteCount,
+        comments: commentCount,
+      };
+    } catch (error) {
+      console.warn("[perfil] DB indisponivel:", (error as Error).message);
+      const mockStats = getMockActivityStatsForUser({
+        userId: user.id,
+        username: user.username,
+      });
+
+      profile = fallbackProfile;
+      myReports = mockStats.reports.slice(0, 12);
+      stats = {
+        total: mockStats.total,
+        verified: mockStats.verified,
+        votesCast: mockStats.votesCast,
+        comments: mockStats.comments,
+      };
+    }
   }
 
   const initials = getInitials(profile.name);
@@ -120,7 +159,8 @@ export default async function PerfilPage() {
             <div className="flex flex-wrap gap-4 pt-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <Calendar className="size-3.5" aria-hidden="true" />
-                Desde {profile.createdAt.toLocaleDateString("pt-BR", {
+                Desde{" "}
+                {profile.createdAt.toLocaleDateString("pt-BR", {
                   month: "long",
                   year: "numeric",
                 })}
@@ -129,7 +169,7 @@ export default async function PerfilPage() {
                 <span className="tabular-nums font-semibold text-foreground">
                   {profile.reputationScore}
                 </span>{" "}
-                pontos de reputação
+                pontos de reputacao
               </span>
             </div>
           </div>
@@ -137,7 +177,7 @@ export default async function PerfilPage() {
           <Link href="/denunciar">
             <Button size="lg" className="gap-2">
               <ShieldPlus className="size-4" aria-hidden="true" />
-              Nova denúncia
+              Nova denuncia
             </Button>
           </Link>
         </div>
@@ -146,7 +186,7 @@ export default async function PerfilPage() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={ShieldPlus}
-          label="Denúncias publicadas"
+          label="Denuncias publicadas"
           value={stats.total}
         />
         <StatCard
@@ -162,7 +202,7 @@ export default async function PerfilPage() {
         />
         <StatCard
           icon={MessageCircle}
-          label="Comentários"
+          label="Comentarios"
           value={stats.comments}
         />
       </div>
@@ -172,7 +212,7 @@ export default async function PerfilPage() {
           id="my-reports-heading"
           className="mb-4 font-display text-xl font-bold tracking-tight"
         >
-          Minhas denúncias
+          Minhas denuncias
         </h2>
         {myReports.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border p-12 text-center">
@@ -180,19 +220,21 @@ export default async function PerfilPage() {
               <ShieldPlus className="size-6" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-semibold">Você ainda não publicou denúncias.</p>
+              <p className="text-sm font-semibold">
+                Voce ainda nao publicou denuncias.
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Comece a proteger a comunidade.
               </p>
             </div>
             <Link href="/denunciar">
-              <Button>Criar primeira denúncia</Button>
+              <Button>Criar primeira denuncia</Button>
             </Link>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {myReports.map((r) => (
-              <ReportCard key={r.id} report={r} />
+            {myReports.map((report) => (
+              <ReportCard key={report.id} report={report} />
             ))}
           </div>
         )}

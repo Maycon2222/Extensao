@@ -131,6 +131,27 @@ export function getMockReportsByAuthor(username?: string | null): Report[] {
   return getMockReports().filter((report) => report.author.username === username);
 }
 
+export function getMockActivityStatsForUser(input: {
+  userId?: string | null;
+  username?: string | null;
+}) {
+  const reports = getMockReportsByAuthor(input.username);
+  const comments = Object.values(commentsStore())
+    .flat()
+    .filter((comment) => comment.author.id === input.userId).length;
+  const votesCast = Object.values(votesStore()).filter(
+    (reportVotes) => input.userId && reportVotes[input.userId]
+  ).length;
+
+  return {
+    reports,
+    total: reports.length,
+    verified: reports.filter((report) => report.verified).length,
+    votesCast,
+    comments,
+  };
+}
+
 export function removeMockReport(id: string): boolean {
   const g = globalThis as MockStoreGlobal;
   g.opaMockRemovedReportIds ??= [];
