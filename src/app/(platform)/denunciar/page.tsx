@@ -125,7 +125,7 @@ export default function DenunciarPage() {
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      const raw = window.sessionStorage.getItem(DRAFT_STORAGE_KEY);
       if (!raw) {
         setDraftLoaded(true);
         return;
@@ -146,7 +146,7 @@ export default function DenunciarPage() {
       setOccurredAt(draft.occurredAt ?? new Date().toISOString().split("T")[0]);
       setAccepted(draft.accepted ?? { terms: false, truth: false });
     } catch {
-      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
     } finally {
       setDraftLoaded(true);
     }
@@ -167,7 +167,7 @@ export default function DenunciarPage() {
       accepted,
     };
 
-    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    window.sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
   }, [
     accepted,
     category,
@@ -244,7 +244,7 @@ export default function DenunciarPage() {
           ? "Modo demonstração: a denúncia foi validada, mas não foi salva no banco local."
           : "Obrigado por contribuir. Sua denúncia já está disponível para a comunidade validar.",
       });
-      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
       router.push(data.mockMode ? "/feed" : `/denuncia/${data.id}`);
     } catch (err) {
       console.error(err);

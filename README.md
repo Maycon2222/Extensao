@@ -26,6 +26,8 @@ NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="dev-secret-change-me"
 DATABASE_URL="postgresql://opa:opa@localhost:5432/opa?schema=public"
 OPA_FORCE_MOCK="true"
+OPA_MOCK_EMAIL="defina-um-email-local"
+OPA_MOCK_PASSWORD="defina-uma-senha-local"
 ```
 
 Depois rode:
@@ -37,14 +39,10 @@ npm run dev
 
 Acesse `http://localhost:3000`.
 
-Contas disponiveis no modo demo:
-
-| Email | Senha | Perfil |
-|-------|-------|--------|
-| admin@opa.app | senha123 | Administrador |
-| maria@example.com | senha123 | Usuario |
-
-No modo demo, denuncias, votos e comentarios criados ficam em memoria enquanto o servidor local estiver rodando.
+No modo demo, defina as credenciais localmente via `OPA_MOCK_EMAIL` e
+`OPA_MOCK_PASSWORD`. Nao publique credenciais reais ou de teste no repositorio.
+Denuncias, votos e comentarios criados ficam em memoria enquanto o servidor
+local estiver rodando.
 
 ### Rodar com PostgreSQL
 
@@ -74,15 +72,11 @@ npm run dev
 
 Acesse `http://localhost:3000`.
 
-### Usuarios de teste (apos seed)
+### Seed de desenvolvimento
 
-| Email | Senha | Reputacao |
-|-------|-------|-----------|
-| admin@opa.app | senha123 | Admin |
-| maria@example.com | senha123 | Ouro |
-| rafael@example.com | senha123 | Diamante |
-| pedro@example.com | senha123 | Prata |
-| lucas@example.com | senha123 | Bronze |
+O seed cria dados de exemplo e pode criar um usuario administrador quando as
+variaveis `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD` estiverem definidas no
+ambiente. Nao use credenciais previsiveis em banco de producao.
 
 ## Funcionalidades recentes
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { searchReports, sanitizeReport } from "@/lib/services/reports";
 import { searchSchema } from "@/lib/validations/report";
 import { computeRiskLevel } from "@/lib/scoring";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * GET /api/search?q=...
@@ -10,6 +11,13 @@ import { computeRiskLevel } from "@/lib/scoring";
  */
 export async function GET(request: Request) {
   try {
+    const limited = rateLimit(request, {
+      key: "search",
+      limit: 60,
+      windowMs: 60_000,
+    });
+    if (limited) return limited;
+
     const url = new URL(request.url);
     const parsed = searchSchema.safeParse({ q: url.searchParams.get("q") });
 

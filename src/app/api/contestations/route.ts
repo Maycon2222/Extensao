@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { contestationSchema } from "@/lib/validations/report";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * POST /api/contestations
@@ -10,6 +11,13 @@ import { contestationSchema } from "@/lib/validations/report";
  */
 export async function POST(request: Request) {
   try {
+    const limited = rateLimit(request, {
+      key: "contestations:create",
+      limit: 5,
+      windowMs: 60_000,
+    });
+    if (limited) return limited;
+
     const session = await auth();
     const body = await request.json();
     const parsed = contestationSchema.safeParse(body);

@@ -30,109 +30,96 @@ async function main() {
   await db.user.deleteMany();
 
   console.log("Criando usuarios...");
-  const password = await bcrypt.hash("senha123", 12);
+  const seedPassword = process.env.SEED_USER_PASSWORD;
+  const passwordHash = seedPassword ? await bcrypt.hash(seedPassword, 12) : null;
+  const adminPasswordHash =
+    process.env.SEED_ADMIN_PASSWORD && process.env.SEED_ADMIN_EMAIL
+      ? await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD, 12)
+      : null;
+
+  const seedUsers = [
+    {
+      email: "seed-user-01@example.invalid",
+      username: "maria_s",
+      name: "Maria Silva",
+      reputationTier: "OURO" as ReputationTier,
+      reputationScore: 1800,
+    },
+    {
+      email: "seed-user-02@example.invalid",
+      username: "rafa_lima",
+      name: "Rafael Lima",
+      reputationTier: "DIAMANTE" as ReputationTier,
+      reputationScore: 3200,
+    },
+    {
+      email: "seed-user-03@example.invalid",
+      username: "pedro_r",
+      name: "Pedro Ramos",
+      reputationTier: "PRATA" as ReputationTier,
+      reputationScore: 420,
+    },
+    {
+      email: "seed-user-04@example.invalid",
+      username: "juliana_m",
+      name: "Juliana Moreira",
+      reputationTier: "PRATA" as ReputationTier,
+      reputationScore: 380,
+    },
+    {
+      email: "seed-user-05@example.invalid",
+      username: "carlos_a",
+      name: "Carlos Almeida",
+      reputationTier: "OURO" as ReputationTier,
+      reputationScore: 1200,
+    },
+    {
+      email: "seed-user-06@example.invalid",
+      username: "ana_p",
+      name: "Ana Pereira",
+      reputationTier: "DIAMANTE" as ReputationTier,
+      reputationScore: 2800,
+    },
+    {
+      email: "seed-user-07@example.invalid",
+      username: "lucas_t",
+      name: "Lucas Teixeira",
+      reputationTier: "BRONZE" as ReputationTier,
+      reputationScore: 50,
+    },
+  ];
 
   const users = await Promise.all([
-    db.user.create({
-      data: {
-        email: "admin@opa.app",
-        username: "admin",
-        name: "Administrador OPA",
-        passwordHash: password,
-        role: "ADMIN",
-        reputationTier: "DIAMANTE",
-        reputationScore: 5000,
-        acceptedTermsAt: new Date(),
-        emailVerified: new Date(),
-      },
-    }),
-    db.user.create({
-      data: {
-        email: "maria@example.com",
-        username: "maria_s",
-        name: "Maria Silva",
-        passwordHash: password,
-        reputationTier: "OURO",
-        reputationScore: 1800,
-        acceptedTermsAt: new Date(),
-        emailVerified: new Date(),
-      },
-    }),
-    db.user.create({
-      data: {
-        email: "rafael@example.com",
-        username: "rafa_lima",
-        name: "Rafael Lima",
-        passwordHash: password,
-        reputationTier: "DIAMANTE",
-        reputationScore: 3200,
-        acceptedTermsAt: new Date(),
-        emailVerified: new Date(),
-      },
-    }),
-    db.user.create({
-      data: {
-        email: "pedro@example.com",
-        username: "pedro_r",
-        name: "Pedro Ramos",
-        passwordHash: password,
-        reputationTier: "PRATA",
-        reputationScore: 420,
-        acceptedTermsAt: new Date(),
-        emailVerified: new Date(),
-      },
-    }),
-    db.user.create({
-      data: {
-        email: "juliana@example.com",
-        username: "juliana_m",
-        name: "Juliana Moreira",
-        passwordHash: password,
-        reputationTier: "PRATA",
-        reputationScore: 380,
-        acceptedTermsAt: new Date(),
-        emailVerified: new Date(),
-      },
-    }),
-    db.user.create({
-      data: {
-        email: "carlos@example.com",
-        username: "carlos_a",
-        name: "Carlos Almeida",
-        passwordHash: password,
-        reputationTier: "OURO",
-        reputationScore: 1200,
-        acceptedTermsAt: new Date(),
-        emailVerified: new Date(),
-      },
-    }),
-    db.user.create({
-      data: {
-        email: "ana@example.com",
-        username: "ana_p",
-        name: "Ana Pereira",
-        passwordHash: password,
-        reputationTier: "DIAMANTE",
-        reputationScore: 2800,
-        acceptedTermsAt: new Date(),
-        emailVerified: new Date(),
-      },
-    }),
-    db.user.create({
-      data: {
-        email: "lucas@example.com",
-        username: "lucas_t",
-        name: "Lucas Teixeira",
-        passwordHash: password,
-        reputationTier: "BRONZE",
-        reputationScore: 50,
-        acceptedTermsAt: new Date(),
-        emailVerified: new Date(),
-      },
-    }),
+    ...(process.env.SEED_ADMIN_EMAIL && adminPasswordHash
+      ? [
+          db.user.create({
+            data: {
+              email: process.env.SEED_ADMIN_EMAIL,
+              username: process.env.SEED_ADMIN_USERNAME ?? "admin",
+              name: process.env.SEED_ADMIN_NAME ?? "Administrador OPA",
+              passwordHash: adminPasswordHash,
+              role: "ADMIN",
+              reputationTier: "DIAMANTE",
+              reputationScore: 5000,
+              acceptedTermsAt: new Date(),
+              emailVerified: new Date(),
+            },
+          }),
+        ]
+      : []),
+    ...seedUsers.map((user) =>
+      db.user.create({
+        data: {
+          ...user,
+          passwordHash,
+          acceptedTermsAt: new Date(),
+          emailVerified: new Date(),
+        },
+      })
+    ),
   ]);
 
-  const [admin, maria, rafa, pedro, ju, carlos, ana, lucas] = users;
+  const [maria, rafa, pedro, ju, carlos, ana, lucas] = users.slice(-7);
 
   console.log(`${users.length} usuarios criados.`);
 
@@ -465,11 +452,14 @@ async function main() {
   console.log(`${comments.length} comentarios criados.`);
 
   console.log("\nSeed concluido!");
-  console.log("Usuarios de teste (senha: senha123):");
-  console.log("  - admin@opa.app (admin)");
-  console.log("  - maria@example.com (Ouro)");
-  console.log("  - rafael@example.com (Diamante)");
-  console.log("  - lucas@example.com (Bronze)");
+  if (process.env.SEED_ADMIN_EMAIL) {
+    console.log("Usuario administrador criado a partir das variaveis SEED_ADMIN_*.");
+  }
+  if (seedPassword) {
+    console.log("Usuarios de desenvolvimento criados com a senha definida em SEED_USER_PASSWORD.");
+  } else {
+    console.log("Usuarios de desenvolvimento criados sem senha de login.");
+  }
 }
 
 main()

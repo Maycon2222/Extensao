@@ -8,6 +8,7 @@ import {
   getMockComments,
   getMockReportById,
 } from "@/lib/mock-report-store";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * POST /api/reports/:id/comments
@@ -18,6 +19,13 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = rateLimit(request, {
+      key: "reports:comments:create",
+      limit: 20,
+      windowMs: 60_000,
+    });
+    if (limited) return limited;
+
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -99,7 +107,33 @@ export async function GET(
   try {
     const { id } = await context.params;
     if (process.env.OPA_FORCE_MOCK === "true") {
+      const report = getMockReportById(id);
+      if (!report) {
+        return NextResponse.json(
+          { error: "Denuncia nao encontrada" },
+          { status: 404 }
+        );
+      }
       return NextResponse.json({ items: getMockComments(id) });
+    }
+
+    const report = await db.report.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    if (!report) {
+      return NextResponse.json(
+        { error: "Denuncia nao encontrada" },
+        { status: 404 }
+      );
+    }
+
+    if (report.status !== "PUBLISHED") {
+      return NextResponse.json(
+        { error: "Comentarios indisponiveis para esta denuncia" },
+        { status: 403 }
+      );
     }
 
     const comments = await db.comment.findMany({

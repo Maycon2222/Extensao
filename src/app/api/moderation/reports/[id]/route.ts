@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { moderationActionSchema } from "@/lib/validations/report";
 import { getMockReportById, removeMockReport } from "@/lib/mock-report-store";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * PATCH /api/moderation/reports/:id
@@ -14,6 +15,13 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = rateLimit(request, {
+      key: "moderation:reports",
+      limit: 30,
+      windowMs: 60_000,
+    });
+    if (limited) return limited;
+
     const session = await auth();
     if (
       !session?.user ||

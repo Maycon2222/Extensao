@@ -5,33 +5,27 @@ import { db } from "@/lib/db";
 import { loginSchema } from "@/lib/validations/auth";
 import { authConfig } from "@/lib/auth.config";
 
-const MOCK_USERS = [
-  {
-    id: "mock-admin",
-    email: "admin@opa.app",
-    name: "Administrador OPA",
-    username: "admin",
-    role: "ADMIN",
-    reputationTier: "DIAMANTE",
-    image: null,
-  },
-  {
-    id: "mock-maria",
-    email: "maria@example.com",
-    name: "Maria Silva",
-    username: "maria",
-    role: "USER",
-    reputationTier: "OURO",
-    image: null,
-  },
-] as const;
-
 function authorizeMockUser(email: string, password: string) {
-  if (process.env.OPA_FORCE_MOCK !== "true" || password !== "senha123") {
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.OPA_FORCE_MOCK !== "true" ||
+    !process.env.OPA_MOCK_EMAIL ||
+    !process.env.OPA_MOCK_PASSWORD ||
+    email !== process.env.OPA_MOCK_EMAIL ||
+    password !== process.env.OPA_MOCK_PASSWORD
+  ) {
     return null;
   }
 
-  return MOCK_USERS.find((user) => user.email === email) ?? null;
+  return {
+    id: "mock-user",
+    email,
+    name: process.env.OPA_MOCK_NAME ?? "Usuario Demo",
+    username: process.env.OPA_MOCK_USERNAME ?? "demo",
+    role: process.env.OPA_MOCK_ROLE === "ADMIN" ? ("ADMIN" as const) : ("USER" as const),
+    reputationTier: "DIAMANTE" as const,
+    image: null,
+  };
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   listReportsSchema,
 } from "@/lib/validations/report";
 import { addMockReport } from "@/lib/mock-report-store";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * GET /api/reports
@@ -18,6 +19,13 @@ import { addMockReport } from "@/lib/mock-report-store";
  */
 export async function GET(request: Request) {
   try {
+    const limited = rateLimit(request, {
+      key: "reports:list",
+      limit: 120,
+      windowMs: 60_000,
+    });
+    if (limited) return limited;
+
     const url = new URL(request.url);
     const parsed = listReportsSchema.safeParse({
       categories: url.searchParams.get("categories") ?? undefined,
@@ -58,6 +66,13 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
+    const limited = rateLimit(request, {
+      key: "reports:create",
+      limit: 10,
+      windowMs: 60_000,
+    });
+    if (limited) return limited;
+
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -109,7 +124,6 @@ export async function POST(request: Request) {
     return NextResponse.json(sanitizeReport(report), { status: 201 });
   } catch (error) {
     console.error("[POST /api/reports]", error);
-    const message = error instanceof Error ? error.message : "Erro interno";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

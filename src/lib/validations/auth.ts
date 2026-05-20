@@ -30,7 +30,9 @@ export const registerSchema = z
     password: z
       .string()
       .min(8, "Senha deve ter ao menos 8 caracteres")
-      .max(100, "Senha muito longa"),
+      .max(100, "Senha muito longa")
+      .regex(/[a-zA-Z]/, "Senha deve ter ao menos uma letra")
+      .regex(/\d/, "Senha deve ter ao menos um numero"),
     confirmPassword: z.string(),
     acceptTerms: z.literal(true, {
       message: "Você precisa aceitar os termos",

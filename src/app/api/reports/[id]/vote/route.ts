@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { castVote } from "@/lib/services/reports";
 import { voteSchema } from "@/lib/validations/report";
 import { castMockVote, getMockReportById } from "@/lib/mock-report-store";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * POST /api/reports/:id/vote
@@ -16,6 +17,13 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const limited = rateLimit(request, {
+      key: "reports:vote",
+      limit: 30,
+      windowMs: 60_000,
+    });
+    if (limited) return limited;
+
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(

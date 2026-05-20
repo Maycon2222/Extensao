@@ -2,9 +2,17 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { registerSchema } from "@/lib/validations/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    const limited = rateLimit(request, {
+      key: "auth:register",
+      limit: 5,
+      windowMs: 60_000,
+    });
+    if (limited) return limited;
+
     const body = await request.json();
     const parsed = registerSchema.safeParse(body);
 
